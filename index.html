@@ -1,222 +1,33 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#173d2b">
-<meta name="description" content="GPS Florestal: localização offline e registro de pontos em campo.">
-<link rel="manifest" href="manifest.json">
-<title>GPS Florestal</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#173d2b"><meta name="description" content="GPS Florestal com mapa-base, PDF georreferenciado e pontos de campo offline."><link rel="manifest" href="manifest.json"><title>GPS Florestal</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <style>
-:root{--green:#173d2b;--green2:#24583d;--bg:#f2f5f1;--card:#fff;--line:#d8e1d8;--text:#17231b;--muted:#617064}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px system-ui,-apple-system,Segoe UI,sans-serif}
-header{background:var(--green);color:white;padding:18px 16px 16px;position:sticky;top:0;z-index:5}
-header h1{margin:0;font-size:22px;letter-spacing:.2px}header p{margin:4px 0 0;font-size:13px;opacity:.88}
-main{max-width:760px;margin:auto;padding:14px;display:grid;gap:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:15px;box-shadow:0 2px 8px #193b2410}
-h2{font-size:17px;margin:0 0 12px}.status{display:flex;align-items:center;gap:8px;font-weight:650}.dot{width:10px;height:10px;border-radius:50%;background:#87938a}.dot.ok{background:#21864a}.muted{color:var(--muted);font-size:13px}
-.coords{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.metric{background:#f5f8f4;border-radius:10px;padding:10px}.metric span{display:block;color:var(--muted);font-size:12px}.metric strong{font-size:16px;overflow-wrap:anywhere}
-button,.filebtn{border:0;border-radius:10px;padding:12px 14px;background:var(--green2);color:#fff;font-weight:650;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-height:44px}
-button.secondary,.filebtn.secondary{background:#e8eee8;color:var(--green)}button.danger{background:#9c3029}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions>*{flex:1}
-input,select,textarea{width:100%;border:1px solid #cbd7cb;border-radius:10px;padding:11px;font:inherit;background:white;color:var(--text);margin-top:5px}
-label{display:block;font-size:13px;font-weight:650;margin:10px 0}
-#mapPreview{min-height:140px;border:1px dashed #bdcbbd;border-radius:10px;background:linear-gradient(135deg,#e6eee2,#f8faf7);display:flex;align-items:center;justify-content:center;text-align:center;padding:18px;color:#4b6250}
-#mapFrame{width:100%;height:340px;border:1px solid var(--line);border-radius:10px;background:white}
-.point{border-top:1px solid var(--line);padding:12px 0}.point:first-child{border-top:0}.point strong{display:block}.point .muted{margin:4px 0 8px}
-.small{font-size:12px;color:var(--muted)}footer{text-align:center;padding:8px 16px 25px;color:var(--muted);font-size:12px}
-.hidden{display:none!important}
-</style>
-</head>
-<body>
-<header><h1>🌲 GPS Florestal</h1><p>Navegação e registros de campo • versão inicial</p></header>
-<main>
-<section class="card">
-  <div class="status"><span id="gpsDot" class="dot"></span><span id="gpsStatus">GPS aguardando ativação</span></div>
-  <div class="coords">
-    <div class="metric"><span>Latitude</span><strong id="lat">—</strong></div>
-    <div class="metric"><span>Longitude</span><strong id="lon">—</strong></div>
-    <div class="metric"><span>Precisão estimada</span><strong id="accuracy">—</strong></div>
-    <div class="metric"><span>Última atualização</span><strong id="updated">—</strong></div>
-  </div>
-  <div class="actions"><button id="startGps">Ativar GPS</button><button class="secondary" id="stopGps">Parar GPS</button></div>
-  <p class="small">Dica: permita a localização no navegador e teste ao ar livre. A localização pode funcionar sem internet, mas o navegador precisa de permissão e o GPS do aparelho precisa estar ligado.</p>
-</section>
-
-<section class="card">
-  <h2>Mapa de referência</h2>
-  <label>Carregar mapa PDF/GeoPDF ou imagem do aparelho
-    <input id="mapFile" type="file" accept=".pdf,.geopdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*">
-  </label>
-  <div id="mapPreview">Escolha um arquivo de mapa para visualizar aqui.<br><span class="small">Esta versão exibe o PDF/imagem como referência visual; ainda não converte automaticamente coordenadas do GeoPDF para a posição no desenho.</span></div>
-  <p class="small" id="mapName">Nenhum mapa carregado. O arquivo não é enviado para a internet.</p>
-</section>
-
-<section class="card">
-  <h2>Registrar ponto de campo</h2>
-  <label>Nome do ponto<input id="pointName" placeholder="Ex.: Entrada do talhão 12"></label>
-  <label>Tipo
-    <select id="pointType"><option>Talhão</option><option>Estrada</option><option>Acesso</option><option>Obstáculo</option><option>Máquina</option><option>Ocorrência</option><option>Outro</option></select>
-  </label>
-  <label>Observações<textarea id="pointNotes" rows="2" placeholder="Detalhes do local (opcional)"></textarea></label>
-  <div class="actions"><button id="savePoint">Salvar ponto com GPS</button><button class="secondary" id="saveManual">Salvar coordenadas atuais</button></div>
-  <p class="small">Para salvar um ponto com coordenadas, primeiro ative o GPS. Os registros ficam armazenados neste navegador/aparelho.</p>
-</section>
-
-<section class="card">
-  <h2>Pontos salvos <span id="pointCount" class="small">(0)</span></h2>
-  <div id="pointsList"><p class="muted">Nenhum ponto registrado ainda.</p></div>
-  <div class="actions"><button id="exportData">Exportar backup JSON</button><label class="filebtn secondary">Restaurar backup<input id="importData" type="file" accept=".json,application/json" class="hidden"></label></div>
-  <p class="small">Faça backup regularmente. Limpar os dados do navegador ou desinstalar pode apagar os registros locais.</p>
-</section>
-<section class="card">
-  <h2>Sobre o funcionamento offline</h2>
-  <p class="muted">O GPS Florestal guarda os registros localmente. Depois de instalado e carregado uma vez pelo endereço HTTPS, a interface pode abrir sem internet. Mapas base de satélite/ruas e georreferenciamento automático de GeoPDF ainda não fazem parte desta versão.</p>
-</section>
-</main>
-<footer>GPS Florestal • Protótipo inicial para testes em campo</footer>
+:root{--green:#173d2b;--green2:#24583d;--bg:#f2f5f1;--card:#fff;--line:#d8e1d8;--text:#17231b;--muted:#617064}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px system-ui,-apple-system,Segoe UI,sans-serif}header{background:var(--green);color:white;padding:15px 16px;position:sticky;top:0;z-index:1000}header h1{margin:0;font-size:22px}header p{margin:4px 0 0;font-size:13px;opacity:.9}main{max-width:900px;margin:auto;padding:12px;display:grid;gap:12px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 2px 8px #193b2410}h2{font-size:17px;margin:0 0 12px}.status{display:flex;align-items:center;gap:8px;font-weight:650}.dot{width:10px;height:10px;border-radius:50%;background:#87938a}.dot.ok{background:#21864a}.muted,.small{color:var(--muted);font-size:12px}.coords{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.metric{background:#f5f8f4;border-radius:9px;padding:9px}.metric span{display:block;color:var(--muted);font-size:12px}.metric strong{font-size:15px;overflow-wrap:anywhere}button,.filebtn{border:0;border-radius:10px;padding:11px 13px;background:var(--green2);color:white;font-weight:650;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-height:43px}button.secondary,.filebtn.secondary{background:#e8eee8;color:var(--green)}button.danger{background:#9c3029}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions>*{flex:1}input,select,textarea{width:100%;border:1px solid #cbd7cb;border-radius:9px;padding:10px;font:inherit;background:white;color:var(--text);margin-top:5px}label{display:block;font-size:13px;font-weight:650;margin:9px 0}.layerbar{display:flex;gap:7px;margin-bottom:9px}.layerbar button{flex:1}.layerbar button.active{outline:3px solid #a9c7ae;background:#173d2b}#map{height:52vh;min-height:330px;border:1px solid var(--line);border-radius:10px;z-index:1}.point{border-top:1px solid var(--line);padding:12px 0}.point:first-child{border-top:0}.point strong{display:block}.point .muted{margin:4px 0 8px}.hidden{display:none!important}.grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px}.leaflet-control-attribution{font-size:9px!important}footer{text-align:center;padding:8px 15px 22px;color:var(--muted);font-size:12px}@media(min-width:700px){main{padding:18px}.coords{grid-template-columns:repeat(4,1fr)}}
+</style></head><body>
+<header><h1>🌲 GPS Florestal</h1><p>Mapa de campo • GPS • PDF • pontos salvos</p></header><main>
+<section class="card"><div class="status"><span id="gpsDot" class="dot"></span><span id="gpsStatus">GPS aguardando ativação</span></div><div class="coords"><div class="metric"><span>Latitude</span><strong id="lat">—</strong></div><div class="metric"><span>Longitude</span><strong id="lon">—</strong></div><div class="metric"><span>Precisão estimada</span><strong id="accuracy">—</strong></div><div class="metric"><span>Última atualização</span><strong id="updated">—</strong></div></div><div class="actions"><button id="startGps">Ativar GPS</button><button class="secondary" id="stopGps">Parar GPS</button><button class="secondary" id="centerGps">Centralizar em mim</button></div><p class="small">Permita a localização no navegador e mantenha o GPS do aparelho ligado. A primeira carga dos mapas precisa de internet.</p></section>
+<section class="card"><h2>Mapa-base e posição real</h2><div class="layerbar"><button id="streetBtn" class="active">Ruas / estradas</button><button id="satBtn">Satélite</button></div><div id="map"></div><p id="mapStatus" class="small">Mapa-base online. Os blocos visualizados podem ficar guardados em cache, mas isso não garante cobertura offline completa.</p></section>
+<section class="card"><h2>Sobrepor mapa PDF</h2><label>Selecionar PDF/GeoPDF<input id="mapFile" type="file" accept=".pdf,.geopdf,application/pdf"></label><p id="pdfName" class="small">Nenhum PDF selecionado.</p><p class="small">Para alinhar um PDF comum, informe os limites geográficos conhecidos do mapa. Use latitude/longitude em graus decimais. Se o GeoPDF tiver georreferenciamento embutido, esta versão ainda não extrai esses dados automaticamente.</p><div class="grid4"><label>Latitude sul<input id="south" type="number" step="any" placeholder="Ex.: -22.50"></label><label>Longitude oeste<input id="west" type="number" step="any" placeholder="Ex.: -49.10"></label><label>Latitude norte<input id="north" type="number" step="any" placeholder="Ex.: -22.45"></label><label>Longitude leste<input id="east" type="number" step="any" placeholder="Ex.: -49.00"></label></div><div class="actions"><button id="overlayPdf">Alinhar PDF no mapa</button><button id="removePdf" class="secondary">Remover sobreposição</button></div><p id="overlayStatus" class="small">O PDF é processado no aparelho; não é enviado para a internet.</p></section>
+<section class="card"><h2>Registrar ponto de campo</h2><label>Nome do ponto<input id="pointName" placeholder="Ex.: Entrada do talhão 12"></label><label>Tipo<select id="pointType"><option>Talhão</option><option>Estrada</option><option>Acesso</option><option>Obstáculo</option><option>Máquina</option><option>Ocorrência</option><option>Outro</option></select></label><label>Observações<textarea id="pointNotes" rows="2" placeholder="Detalhes do local (opcional)"></textarea></label><div class="actions"><button id="savePoint">Salvar ponto com GPS</button><button id="saveManual" class="secondary">Salvar coordenadas atuais</button></div><p class="small">Os pontos continuam no armazenamento local deste navegador/aparelho. Não limpe os dados do navegador sem exportar um backup.</p></section>
+<section class="card"><h2>Pontos salvos <span id="pointCount" class="small">(0)</span></h2><div id="pointsList"><p class="muted">Nenhum ponto registrado ainda.</p></div><div class="actions"><button id="exportData">Exportar backup JSON</button><label class="filebtn secondary">Restaurar backup<input id="importData" type="file" accept=".json,application/json" class="hidden"></label></div></section>
+<section class="card"><h2>Uso offline — importante</h2><p class="muted">A interface, os pontos e o PDF escolhido podem funcionar sem internet depois de carregados. Os mapas de ruas e satélite são fornecidos por serviços externos; o cache guarda apenas blocos que já foram carregados e não garante que toda a fazenda esteja disponível offline. Para offline confiável, será necessário instalar um pacote de mapas da área de trabalho com licença compatível. Não apague os dados do site, pois isso pode apagar os pontos salvos.</p></section></main><footer>GPS Florestal • versão de campo em desenvolvimento</footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-const $=id=>document.getElementById(id);
-let watchId=null, currentPosition=null, mapObjectUrl=null;
-const STORAGE_KEY='gps-florestal-points-v1';
-function getPoints(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}
-function setPoints(p){localStorage.setItem(STORAGE_KEY,JSON.stringify(p));renderPoints()}
-function fmt(n){return typeof n==='number'?n.toFixed(6):'—'}
-function updatePosition(pos){
- currentPosition={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy,at:new Date().toISOString()};
- $('lat').textContent=fmt(currentPosition.lat);$('lon').textContent=fmt(currentPosition.lon);
- $('accuracy').textContent=Math.round(currentPosition.accuracy)+' m';
- $('updated').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
- $('gpsStatus').textContent='GPS ativo • posição recebida';$('gpsDot').classList.add('ok');
-}
+const $=id=>document.getElementById(id);let watchId=null,currentPosition=null,pdfObjectUrl=null,pdfOverlay=null,pdfCanvas=null;const STORAGE_KEY='gps-florestal-points-v1';
+function getPoints(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}function setPoints(p){localStorage.setItem(STORAGE_KEY,JSON.stringify(p));renderPoints()}function fmt(n){return typeof n==='number'?n.toFixed(6):'—'}
+let map=null,streetLayer=null,satLayer=null,activeLayer='street',gpsMarker=null,accuracyCircle=null,pointLayer=null;
+function initMap(){if(!window.L){$('mapStatus').textContent='Biblioteca do mapa não carregou. Abra o aplicativo conectado à internet uma vez e recarregue.';return}map=L.map('map',{zoomControl:true}).setView([-22.3,-49.0],10);streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors',crossOrigin:true});satLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri',crossOrigin:true});streetLayer.addTo(map);pointLayer=L.layerGroup().addTo(map);$('streetBtn').onclick=()=>setBase('street');$('satBtn').onclick=()=>setBase('sat');setTimeout(()=>map.invalidateSize(),250);renderMapPoints()}
+function setBase(which){if(!map)return;activeLayer=which;if(map.hasLayer(streetLayer))map.removeLayer(streetLayer);if(map.hasLayer(satLayer))map.removeLayer(satLayer);(which==='street'?streetLayer:satLayer).addTo(map);$('streetBtn').classList.toggle('active',which==='street');$('satBtn').classList.toggle('active',which==='sat');$('mapStatus').textContent=(which==='street'?'Camada de ruas/estradas':'Camada de satélite')+'. Blocos carregados podem estar em cache; cobertura offline não é garantida.'}
+function updatePosition(pos){currentPosition={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy,at:new Date().toISOString()};$('lat').textContent=fmt(currentPosition.lat);$('lon').textContent=fmt(currentPosition.lon);$('accuracy').textContent=Math.round(currentPosition.accuracy)+' m';$('updated').textContent=new Date().toLocaleTimeString('pt-BR');$('gpsStatus').textContent='GPS ativo • posição recebida';$('gpsDot').classList.add('ok');if(map){const ll=[currentPosition.lat,currentPosition.lon];if(!gpsMarker)gpsMarker=L.circleMarker(ll,{radius:8,color:'#fff',weight:3,fillColor:'#087cff',fillOpacity:1}).addTo(map).bindPopup('Minha posição GPS');else gpsMarker.setLatLng(ll);if(!accuracyCircle)accuracyCircle=L.circle(ll,{radius:currentPosition.accuracy,color:'#087cff',weight:1,fillOpacity:.08}).addTo(map);else accuracyCircle.setLatLng(ll).setRadius(currentPosition.accuracy)}}
 function gpsError(err){$('gpsStatus').textContent=({1:'Permissão de localização negada',2:'Posição indisponível',3:'Tempo esgotado'})[err.code]||'Não foi possível obter GPS';$('gpsDot').classList.remove('ok')}
-$('startGps').onclick=()=>{
- if(!('geolocation' in navigator)){ $('gpsStatus').textContent='Este navegador não oferece GPS';return}
- if(location.protocol!=='https:'&&location.hostname!=='localhost'){ $('gpsStatus').textContent='Abra por endereço HTTPS para permitir o GPS'; }
- if(watchId!==null)navigator.geolocation.clearWatch(watchId);
- $('gpsStatus').textContent='Procurando satélites…';
- watchId=navigator.geolocation.watchPosition(updatePosition,gpsError,{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
-};
-$('stopGps').onclick=()=>{if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('gpsStatus').textContent='GPS pausado';$('gpsDot').classList.remove('ok')};
-let pdfJsLoadPromise=null;
-function loadPdfJs(){
- if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
- if(pdfJsLoadPromise)return pdfJsLoadPromise;
- pdfJsLoadPromise=new Promise((resolve,reject)=>{
-  const script=document.createElement('script');
-  script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-  script.onload=()=>window.pdfjsLib?resolve(window.pdfjsLib):reject(new Error('Biblioteca PDF.js não ficou disponível.'));
-  script.onerror=()=>reject(new Error('Não foi possível baixar o visualizador PDF. Se estiver sem internet, tente abrir o PDF no leitor do aparelho.'));
-  document.head.appendChild(script);
- });
- return pdfJsLoadPromise;
-}
-$('mapFile').onchange=async e=>{
- const f=e.target.files&&e.target.files[0];
- if(!f)return;
- if(mapObjectUrl)URL.revokeObjectURL(mapObjectUrl);
- mapObjectUrl=URL.createObjectURL(f);
- const preview=$('mapPreview');
- preview.innerHTML='';
- preview.style.display='block';
- preview.style.overflow='auto';
- preview.style.maxHeight='70vh';
- const lowerName=f.name.toLowerCase();
- const isPdf=f.type==='application/pdf'||lowerName.endsWith('.pdf')||lowerName.endsWith('.geopdf');
- $('mapName').textContent='Mapa selecionado: '+f.name+'. O arquivo permanece neste aparelho.';
- if(f.type.startsWith('image/')){
-  const img=document.createElement('img');
-  img.src=mapObjectUrl;
-  img.alt='Mapa carregado';
-  img.style.maxWidth='100%';
-  img.style.maxHeight='70vh';
-  img.style.objectFit='contain';
-  img.style.display='block';
-  img.style.margin='0 auto';
-  preview.appendChild(img);
-  return;
- }
- if(isPdf){
-  preview.textContent='Carregando PDF...';
-  try{
-   const pdfjs=await loadPdfJs();
-   pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-   const pdf=await pdfjs.getDocument({data:await f.arrayBuffer()}).promise;
-   preview.innerHTML='';
-   const info=document.createElement('p');
-   info.className='small';
-   info.textContent='PDF carregado: '+pdf.numPages+' página(s). GeoPDF ainda é exibido como referência visual; a posição GPS não é sobreposta automaticamente.';
-   preview.appendChild(info);
-   for(let n=1;n<=pdf.numPages;n++){
-    const page=await pdf.getPage(n);
-    const viewport=page.getViewport({scale:Math.min(1.5,Math.max(0.8,(preview.clientWidth-24)/page.getViewport({scale:1}).width))});
-    const canvas=document.createElement('canvas');
-    canvas.width=Math.ceil(viewport.width);
-    canvas.height=Math.ceil(viewport.height);
-    canvas.style.width='100%';
-    canvas.style.height='auto';
-    canvas.style.display='block';
-    canvas.style.margin='0 auto 12px';
-    canvas.style.background='#fff';
-    preview.appendChild(canvas);
-    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-   }
-  }catch(err){
-   preview.innerHTML='';
-   const message=document.createElement('p');
-   message.className='small';
-   message.textContent='O visualizador integrado não conseguiu abrir este PDF. '+(err&&err.message?err.message:'Confira se o arquivo não está danificado.');
-   preview.appendChild(message);
-   const frame=document.createElement('iframe');
-   frame.id='mapFrame';
-   frame.src=mapObjectUrl;
-   frame.title='Mapa PDF';
-   frame.style.width='100%';
-   frame.style.height='60vh';
-   frame.style.border='1px solid #d8e1d8';
-   frame.style.borderRadius='10px';
-   preview.appendChild(frame);
-   const tip=document.createElement('p');
-   tip.className='small';
-   tip.textContent='Se o PDF não aparecer aqui, abra o arquivo no leitor de PDF do Android. Para o visualizador integrado funcionar, a biblioteca PDF.js precisa estar disponível; na primeira utilização ela é carregada pela internet.';
-   preview.appendChild(tip);
-  }
-  return;
- }
- preview.textContent='Formato não reconhecido. Escolha um arquivo PDF, GeoPDF, PNG ou JPG.';
- $('mapName').textContent='Formato não reconhecido: '+f.name;
-};
-
-function addPoint(useGps){
- const name=$('pointName').value.trim();if(!name){alert('Informe um nome para o ponto.');$('pointName').focus();return}
- if(useGps&&!currentPosition){alert('Ative o GPS e aguarde receber uma posição antes de salvar.');return}
- const p={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),name,type:$('pointType').value,notes:$('pointNotes').value.trim(),lat:currentPosition?.lat??null,lon:currentPosition?.lon??null,accuracy:currentPosition?.accuracy??null,createdAt:new Date().toISOString()};
- const all=getPoints();all.unshift(p);setPoints(all);$('pointName').value='';$('pointNotes').value='';
-}
-$('savePoint').onclick=()=>addPoint(true);
-$('saveManual').onclick=()=>{if(!currentPosition){alert('Ainda não há coordenadas atuais. Ative o GPS primeiro.');return}addPoint(true)};
-function renderPoints(){
- const ps=getPoints();$('pointCount').textContent='('+ps.length+')';const root=$('pointsList');root.innerHTML='';
- if(!ps.length){root.innerHTML='<p class="muted">Nenhum ponto registrado ainda.</p>';return}
- ps.forEach(p=>{
-  const div=document.createElement('div');div.className='point';
-  const title=document.createElement('strong');title.textContent=p.name+' • '+p.type;div.appendChild(title);
-  const meta=document.createElement('div');meta.className='muted';meta.textContent=new Date(p.createdAt).toLocaleString('pt-BR')+' | '+(p.lat==null?'Sem coordenadas':fmt(p.lat)+', '+fmt(p.lon)+(p.accuracy?' • ±'+Math.round(p.accuracy)+' m':''));div.appendChild(meta);
-  if(p.notes){const note=document.createElement('div');note.textContent=p.notes;div.appendChild(note)}
-  const actions=document.createElement('div');actions.className='actions';actions.style.marginTop='8px';
-  if(p.lat!=null){const copy=document.createElement('button');copy.className='secondary';copy.textContent='Copiar coordenadas';copy.onclick=()=>navigator.clipboard?.writeText(p.lat+', '+p.lon).then(()=>alert('Coordenadas copiadas.')).catch(()=>alert(p.lat+', '+p.lon));actions.appendChild(copy)}
-  const del=document.createElement('button');del.className='danger';del.textContent='Excluir';del.onclick=()=>{if(confirm('Excluir o ponto "'+p.name+'"?'))setPoints(getPoints().filter(x=>x.id!==p.id))};actions.appendChild(del);div.appendChild(actions);root.appendChild(div);
- });
-}
-$('exportData').onclick=()=>{
- const data={app:'GPS Florestal',version:1,exportedAt:new Date().toISOString(),points:getPoints()};
- const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='gps-florestal-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url);
-};
-$('importData').onchange=async e=>{
- const f=e.target.files[0];if(!f)return;
- try{const d=JSON.parse(await f.text());const ps=Array.isArray(d)?d:d.points;if(!Array.isArray(ps))throw new Error('Formato inválido');if(!confirm('Restaurar '+ps.length+' ponto(s)? Os pontos atuais serão substituídos.'))return;setPoints(ps);alert('Backup restaurado.')}catch(err){alert('Não foi possível ler o backup JSON.')}
- e.target.value='';
-};
-if('serviceWorker' in navigator && location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-renderPoints();
-</script>
-</body></html>
+$('startGps').onclick=()=>{if(!('geolocation'in navigator)){$('gpsStatus').textContent='Este navegador não oferece GPS';return}if(location.protocol!=='https:'&&location.hostname!=='localhost'){$('gpsStatus').textContent='Abra pelo endereço HTTPS para permitir o GPS';return}if(watchId!==null)navigator.geolocation.clearWatch(watchId);$('gpsStatus').textContent='Procurando posição GPS…';watchId=navigator.geolocation.watchPosition(updatePosition,gpsError,{enableHighAccuracy:true,maximumAge:2000,timeout:20000})};$('stopGps').onclick=()=>{if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('gpsStatus').textContent='GPS pausado';$('gpsDot').classList.remove('ok')};$('centerGps').onclick=()=>{if(currentPosition&&map)map.setView([currentPosition.lat,currentPosition.lon],17);else alert('Ative o GPS e aguarde a posição.')};
+function addPoint(){const name=$('pointName').value.trim();if(!name){alert('Informe um nome para o ponto.');return}if(!currentPosition){alert('Ative o GPS e aguarde receber uma posição antes de salvar.');return}const p={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),name,type:$('pointType').value,notes:$('pointNotes').value.trim(),lat:currentPosition.lat,lon:currentPosition.lon,accuracy:currentPosition.accuracy,createdAt:new Date().toISOString()};const all=getPoints();all.unshift(p);setPoints(all);$('pointName').value='';$('pointNotes').value='';if(map)map.setView([p.lat,p.lon],17)}$('savePoint').onclick=addPoint;$('saveManual').onclick=addPoint;
+function renderMapPoints(){if(!pointLayer)return;pointLayer.clearLayers();getPoints().forEach(p=>{if(p.lat!=null&&p.lon!=null)L.marker([p.lat,p.lon]).addTo(pointLayer).bindPopup('<b>'+escapeHtml(p.name)+'</b><br>'+escapeHtml(p.type))})}function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderPoints(){const ps=getPoints();$('pointCount').textContent='('+ps.length+')';const root=$('pointsList');root.innerHTML='';if(!ps.length){root.innerHTML='<p class="muted">Nenhum ponto registrado ainda.</p>';renderMapPoints();return}ps.forEach(p=>{const div=document.createElement('div');div.className='point';const title=document.createElement('strong');title.textContent=p.name+' • '+p.type;div.appendChild(title);const meta=document.createElement('div');meta.className='muted';meta.textContent=new Date(p.createdAt).toLocaleString('pt-BR')+' | '+(p.lat==null?'Sem coordenadas':fmt(p.lat)+', '+fmt(p.lon)+(p.accuracy?' • ±'+Math.round(p.accuracy)+' m':''));div.appendChild(meta);if(p.notes){const note=document.createElement('div');note.textContent=p.notes;div.appendChild(note)}const actions=document.createElement('div');actions.className='actions';actions.style.marginTop='8px';if(p.lat!=null){const go=document.createElement('button');go.className='secondary';go.textContent='Ver no mapa';go.onclick=()=>{if(map){map.setView([p.lat,p.lon],17);L.popup().setLatLng([p.lat,p.lon]).setContent(escapeHtml(p.name)).openOn(map)}};actions.appendChild(go);const copy=document.createElement('button');copy.className='secondary';copy.textContent='Copiar coordenadas';copy.onclick=()=>{const t=p.lat+', '+p.lon;if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(()=>alert('Coordenadas copiadas.')).catch(()=>alert(t));else alert(t)};actions.appendChild(copy)}const del=document.createElement('button');del.className='danger';del.textContent='Excluir';del.onclick=()=>{if(confirm('Excluir o ponto "'+p.name+'"?'))setPoints(getPoints().filter(x=>x.id!==p.id))};actions.appendChild(del);div.appendChild(actions);root.appendChild(div)});renderMapPoints()}
+$('exportData').onclick=()=>{const data={app:'GPS Florestal',version:1,exportedAt:new Date().toISOString(),points:getPoints()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='gps-florestal-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)};$('importData').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());const ps=Array.isArray(d)?d:d.points;if(!Array.isArray(ps)||ps.some(p=>!p||typeof p!=='object'))throw Error();if(!confirm('Restaurar '+ps.length+' ponto(s)? Os pontos atuais serão substituídos.'))return;setPoints(ps);alert('Backup restaurado.')}catch(err){alert('Não foi possível ler o backup JSON.')}e.target.value=''};
+$('mapFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;if(pdfObjectUrl)URL.revokeObjectURL(pdfObjectUrl);pdfObjectUrl=URL.createObjectURL(f);$('pdfName').textContent='PDF selecionado: '+f.name;pdfCanvas=null;$('overlayStatus').textContent='Preparando primeira página do PDF…';try{if(!window.pdfjsLib)throw Error('PDF.js não carregou. Conecte à internet e recarregue o aplicativo.');pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;const page=await pdf.getPage(1);const viewport=page.getViewport({scale:2});const canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;pdfCanvas=canvas;$('overlayStatus').textContent='PDF preparado ('+pdf.numPages+' página(s)); informe os limites geográficos para alinhar a primeira página.'}catch(err){$('overlayStatus').textContent='Não foi possível preparar o PDF: '+err.message}};
+$('overlayPdf').onclick=()=>{if(!map||!pdfCanvas){alert('Selecione um PDF e aguarde o processamento.');return}const s=Number($('south').value),w=Number($('west').value),n=Number($('north').value),e=Number($('east').value);if(![$('south').value,$('west').value,$('north').value,$('east').value].every(v=>v.trim()!=='' )||!(s<n&&w<e)||s< -90||n>90||w< -180||e>180){alert('Informe limites válidos: sul < norte e oeste < leste.');return}if(pdfOverlay)map.removeLayer(pdfOverlay);const url=pdfCanvas.toDataURL('image/png');pdfOverlay=L.imageOverlay(url,[[s,w],[n,e]],{opacity:.72,interactive:true}).addTo(map);map.fitBounds([[s,w],[n,e]]);$('overlayStatus').textContent='PDF sobreposto. Ajuste os limites se o desenho não coincidir com estradas e talhões. Transparência: 72%.'};$('removePdf').onclick=()=>{if(pdfOverlay&&map)map.removeLayer(pdfOverlay);pdfOverlay=null;$('overlayStatus').textContent='Sobreposição removida do mapa.'};
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));initMap();renderPoints();
+</script></body></html>
