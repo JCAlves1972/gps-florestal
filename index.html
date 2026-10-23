@@ -99,7 +99,40 @@ $('startGps').onclick=()=>{
 $('stopGps').onclick=()=>{if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('gpsStatus').textContent='GPS pausado';$('gpsDot').classList.remove('ok')};
 $('mapFile').onchange=e=>{
  const f=e.target.files[0];if(!f)return;
- $('mapName').textContent=f.name+' • '+(f.size/1024/1024).toFixed(2)+' MB';
+ 
+else if(f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf')||f.name.toLowerCase().endsWith('.geopdf')){
+  preview.innerHTML='Carregando PDF...';
+  const script=document.createElement('script');
+  script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  script.onload=async()=>{
+    try{
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+      preview.innerHTML='';
+      preview.style.display='block';
+      preview.style.overflow='auto';
+      preview.style.maxHeight='70vh';
+      for(let n=1;n<=pdf.numPages;n++){
+        const page=await pdf.getPage(n);
+        const viewport=page.getViewport({scale:1.2});
+        const canvas=document.createElement('canvas');
+        canvas.width=viewport.width;
+        canvas.height=viewport.height;
+        canvas.style.width='100%';
+        canvas.style.height='auto';
+        canvas.style.display='block';
+        canvas.style.marginBottom='10px';
+        preview.appendChild(canvas);
+        await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+      }
+    }catch(err){
+      preview.textContent='Erro ao abrir o PDF. Verifique se o arquivo é válido e tente novamente.';
+    }
+  };
+  script.onerror=()=>preview.textContent='Não foi possível carregar o visualizador PDF.';
+  document.head.appendChild(script);
+}
+
  if(mapObjectUrl)URL.revokeObjectURL(mapObjectUrl);mapObjectUrl=URL.createObjectURL(f);
  const preview=$('mapPreview');preview.innerHTML='';
  if(f.type.startsWith('image/')){const img=document.createElement('img');img.src=mapObjectUrl;img.style.maxWidth='100%';img.style.maxHeight='440px';img.style.objectFit='contain';preview.appendChild(img)}
