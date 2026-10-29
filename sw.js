@@ -1,4 +1,4 @@
-const CACHE_NAME='gps-florestal-v7-pdf-geo';
+const CACHE_NAME='gps-florestal-v8-talhao-volume';
 const TILE_CACHE='gps-florestal-map-tiles-v1';
 const CORE=['./','./index.html','./manifest.json'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting())));
