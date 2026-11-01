@@ -1,57 +1,71 @@
-const CACHE_NAME='gps-florestal-v9-multifazendas';
-const TILE_CACHE='gps-florestal-map-tiles-v1';
-const CORE=['./','./index.html','./manifest.json'];
+'use strict';
 
-self.addEventListener('install',event=>event.waitUntil(
-  caches.open(CACHE_NAME)
-    .then(cache=>cache.addAll(CORE))
-    .then(()=>self.skipWaiting())
-));
+const CACHE_NAME = 'gps-florestal-v2';
+const CORE_FILES = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
+];
 
-self.addEventListener('activate',event=>event.waitUntil(
-  caches.keys()
-    .then(keys=>Promise.all(
-      keys.filter(k=>k.startsWith('gps-florestal-')&&k!==CACHE_NAME&&k!==TILE_CACHE)
-        .map(k=>caches.delete(k))
-    ))
-    .then(()=>self.clients.claim())
-));
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(CORE_FILES))
+      .then(() => self.skipWaiting())
+  );
+});
 
-self.addEventListener('fetch',event=>{
-  if(event.request.method!=='GET')return;
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(key => key.startsWith('gps-florestal-') && key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
+  );
+});
 
-  const url=new URL(event.request.url);
-  const isTile=
-    url.hostname==='tile.openstreetmap.org'||
-    url.hostname.endsWith('.tile.openstreetmap.org')||
-    url.hostname==='server.arcgisonline.com';
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
 
-  if(isTile){
-    event.respondWith(caches.open(TILE_CACHE).then(async cache=>{
-      const cached=await cache.match(event.request);
-      if(cached)return cached;
-      try{
-        const response=await fetch(event.request);
-        if(response&&response.ok)cache.put(event.request,response.clone()).catch(()=>{});
-        return response;
-      }catch(err){
-        return cached||Response.error();
-      }
-    }));
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  const isPage = request.mode === 'navigate' ||
+    url.pathname.endsWith('/index.html') ||
+    url.pathname.endsWith('/gps-florestal/');
+
+  if (isPage) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then(cached =>
+          cached || caches.match('./index.html')
+        ))
+    );
     return;
   }
 
-  if(url.origin!==location.origin)return;
-
   event.respondWith(
-    caches.match(event.request).then(cached=>
-      cached||fetch(event.request).then(response=>{
-        if(response&&response.ok){
-          const copy=response.clone();
-          caches.open(CACHE_NAME).then(cache=>cache.put(event.request,copy)).catch(()=>{});
+    caches.match(request).then(cached => {
+      const network = fetch(request).then(response => {
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         }
         return response;
-      }).catch(()=>caches.match('./index.html'))
-    )
+      });
+      return cached || network;
+    })
   );
 });
