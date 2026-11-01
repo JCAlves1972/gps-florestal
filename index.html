@@ -3,6 +3,9 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""><style>
 :root{--g:#173d2b;--g2:#24583d;--bg:#f2f5f1;--line:#d8e1d8;--txt:#17231b;--muted:#617064}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:16px system-ui,-apple-system,Segoe UI,sans-serif}header{background:var(--g);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:1000}header h1{margin:0;font-size:21px}header p{margin:3px 0 0;font-size:12px}main{max-width:950px;margin:auto;padding:12px;display:grid;gap:12px}.card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px;box-shadow:0 2px 8px #193b2410}h2{font-size:17px;margin:0 0 10px}h3{font-size:15px;margin:14px 0 7px}.muted,.small{color:var(--muted);font-size:12px}label{display:block;font-size:13px;font-weight:650;margin:8px 0}input,select,textarea{width:100%;border:1px solid #cbd7cb;border-radius:9px;padding:10px;font:inherit;background:#fff;color:var(--txt);margin-top:4px}button,.filebtn{border:0;border-radius:9px;padding:10px 12px;background:var(--g2);color:#fff;font-weight:650;font-size:14px;min-height:42px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}button.secondary,.filebtn.secondary{background:#e8eee8;color:var(--g)}button.danger{background:#9c3029}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.actions>*{flex:1}.grid2,.grid3,.grid4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.metric,.result{background:#f5f8f4;border-radius:9px;padding:9px}.metric span,.result span{display:block;color:var(--muted);font-size:12px}.metric strong,.result strong{font-size:15px;overflow-wrap:anywhere}.status{font-weight:650}#map{height:58vh;min-height:360px;border:1px solid var(--line);border-radius:9px;z-index:1}.layerbar{display:flex;gap:7px;margin:8px 0}
 
+
+#fullscreenBtn{background:#173d2b!important;color:#fff!important;border:2px solid #173d2b!important;font-weight:750!important;min-height:48px!important}
+#map.map-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;min-height:0!important;z-index:3000!important;border:0!important;border-radius:0!important;background:#f2f5f1}
 #map{position:relative}
 #mapFullscreenBtn{position:absolute!important;top:10px!important;right:10px!important;z-index:1200!important;min-height:42px!important;padding:8px 11px!important;border:2px solid #b8c5b8!important;border-radius:8px!important;background:#fff!important;color:#173d2b!important;font-size:13px!important;font-weight:750!important;box-shadow:0 1px 5px #0003!important;display:block!important}
 #map.map-fullscreen #mapFullscreenBtn{top:12px!important;right:12px!important}
@@ -12,7 +15,7 @@
 </style></head><body><header><h1>🌲 GPS Florestal</h1><p>GPS • mapas por fazenda • inventário • medição de talhões</p></header><main>
 <section class="card"><h2>Fazenda e mapa ativo</h2><label>Selecionar fazenda / mapa<select id="farmSelect"></select></label><div class="actions"><button id="newFarm">＋ Nova fazenda / mapa</button><button id="renameFarm" class="secondary">Renomear</button><button id="deleteFarm" class="danger">Excluir fazenda</button></div><p class="small">Cada fazenda mantém seu próprio inventário, PDF e medições neste aparelho.</p></section>
 <section class="card"><div class="status" id="gpsStatus">GPS aguardando ativação</div><div class="grid4"><div class="metric"><span>Latitude</span><strong id="lat">—</strong></div><div class="metric"><span>Longitude</span><strong id="lon">—</strong></div><div class="metric"><span>Precisão</span><strong id="accuracy">—</strong></div><div class="metric"><span>Atualização</span><strong id="updated">—</strong></div></div><div class="actions"><button id="startGps">Ativar GPS</button><button id="stopGps" class="secondary">Parar GPS</button><button id="centerGps" class="secondary">Centralizar em mim</button></div><p class="small">Permita a localização no navegador. O GPS exige endereço HTTPS.</p></section>
-<section class="card"><h2>Mapa-base e posição real</h2><div class="layerbar"><button id="streetBtn" class="active">Ruas / estradas</button><button id="satBtn">Satélite</button></div><div id="map"></div><p id="mapStatus" class="small">Carregando mapa-base… A primeira visualização precisa de internet.</p></section>
+<section class="card"><h2>Mapa-base e posição real</h2><div class="layerbar"><button id="streetBtn" class="active">Ruas / estradas</button><button id="satBtn">Satélite</button><button id="fullscreenBtn" type="button">⛶ Tela inteira</button></div><div id="map"></div><p id="mapStatus" class="small">Carregando mapa-base… A primeira visualização precisa de internet.</p></section>
 <section class="card"><h2>Sobrepor mapa PDF / GeoPDF</h2><label>Selecionar PDF<input id="mapFile" type="file" accept=".pdf,application/pdf"></label><p id="pdfName" class="small">Nenhum PDF selecionado.</p><details id="manualLimits"><summary>Configuração manual de coordenadas (se necessário)</summary><div class="grid4"><label>Latitude sul<input id="south" type="number" step="any"></label><label>Longitude oeste<input id="west" type="number" step="any"></label><label>Latitude norte<input id="north" type="number" step="any"></label><label>Longitude leste<input id="east" type="number" step="any"></label></div></details><div class="actions"><button id="overlayPdf">Aplicar / enquadrar PDF</button><button id="removePdf" class="secondary">Remover PDF</button></div><p id="overlayStatus" class="small">O PDF é processado no aparelho.</p></section>
 <section class="card"><h2>Inventário da fazenda ativa</h2><p class="hint">Informe os dados exatamente como aparecem no inventário. A altura média é mantida no cadastro. Cálculo-base: VMI × fustes/ha = m³/ha; volume estimado = área medida × m³/ha.</p><label>Talhão<select id="inventorySelect"><option value="">Selecione um talhão</option></select></label><div class="grid2"><label>Número do talhão<input id="invName" placeholder="Ex.: 001-01"></label><label>Área do inventário (ha)<input id="invArea" type="number" min="0" step="any"></label><label>VMI (m³/árvore)<input id="invVmi" type="number" min="0" step="any"></label><label>Fustes por hectare<input id="invStems" type="number" min="0" step="any"></label><label>Altura média (m)<input id="invHeight" type="number" min="0" step="any"></label><label>Volume total do inventário (m³)<input id="invVolume" type="number" min="0" step="any"></label></div><div class="grid2"><div class="result"><span>Rendimento calculado</span><strong id="invYield">— m³/ha</strong></div><div class="result"><span>Volume calculado</span><strong id="invCalcVolume">— m³</strong></div></div><div class="actions"><button id="saveInventory">Salvar / atualizar talhão</button><button id="clearInventory" class="secondary">Limpar campos</button></div><h3>Talhões cadastrados <span id="invCount" class="small">(0)</span></h3><div id="inventoryList"><p class="muted">Nenhum talhão cadastrado.</p></div></section>
 <section class="card" id="measureCard"><h2>Medição de área do talhão</h2><p class="hint">Marque no mapa os vértices do contorno ou adicione sua posição GPS. São necessários pelo menos 3 pontos.</p><label>Nome / número do talhão medido<input id="areaName" placeholder="Ex.: 001-01"></label><div class="actions"><button id="startMeasure">Começar a marcar no mapa</button><button id="addGpsVertex" class="secondary">Adicionar posição GPS</button></div><div class="actions"><button id="undoVertex" class="secondary">Desfazer vértice</button><button id="clearVertices" class="secondary">Limpar vértices</button></div><p id="measureStatus" class="small">Medição desligada.</p><div class="grid2"><div class="result"><span>Vértices</span><strong id="vertexCount">0</strong></div><div class="result"><span>Área medida</span><strong id="areaHaResult">0,000 ha</strong></div></div><label>Talhão do inventário para calcular o volume<select id="measureInventory"><option value="">Usar rendimento manual</option></select></label><label>Rendimento manual (m³/ha), se não usar inventário<input id="yieldM3Ha" type="number" min="0" step="any" placeholder="Opcional"></label><div class="grid2"><div class="result"><span>Volume estimado da área</span><strong id="totalM3Result">— m³</strong></div><div class="result"><span>Rendimento aplicado</span><strong id="yieldResult">— m³/ha</strong></div></div><div class="actions"><button id="saveArea">Salvar medição</button><button id="exportAreas" class="secondary">Exportar medições</button></div><h3>Medições salvas <span id="areaCount" class="small">(0)</span></h3><div id="areasList"><p class="muted">Nenhuma medição salva.</p></div></section>
@@ -69,34 +72,24 @@ function initMap(){
   pointLayer=L.layerGroup().addTo(map);
 
   const mapEl=map.getContainer();
-  const fullscreenBtn=document.createElement('button');
-  fullscreenBtn.type='button';
-  fullscreenBtn.id='mapFullscreenBtn';
-  fullscreenBtn.textContent='⛶ Tela inteira';
-  fullscreenBtn.setAttribute('aria-label','Abrir mapa em tela inteira');
-  mapEl.appendChild(fullscreenBtn);
-  const updateFullscreenButton=()=>{
-   const active=mapEl.classList.contains('map-fullscreen');
-   fullscreenBtn.textContent=active?'✕ Sair da tela inteira':'⛶ Tela inteira';
-   fullscreenBtn.setAttribute('aria-label',active?'Sair da tela inteira':'Abrir mapa em tela inteira');
-  };
-  fullscreenBtn.addEventListener('click',async()=>{
+  $('fullscreenBtn').onclick=async()=>{
    const active=mapEl.classList.contains('map-fullscreen');
    if(!active){
     mapEl.classList.add('map-fullscreen');
     try{if(mapEl.requestFullscreen) await mapEl.requestFullscreen();}catch(e){}
+    $('fullscreenBtn').textContent='✕ Sair da tela inteira';
    }else{
     mapEl.classList.remove('map-fullscreen');
     try{if(document.fullscreenElement&&document.exitFullscreen) await document.exitFullscreen();}catch(e){}
+    $('fullscreenBtn').textContent='⛶ Tela inteira';
    }
-   updateFullscreenButton();
    setTimeout(()=>map.invalidateSize(true),250);
-  });
+  };
   document.addEventListener('fullscreenchange',()=>{
    if(!document.fullscreenElement && mapEl.classList.contains('map-fullscreen')){
     mapEl.classList.remove('map-fullscreen');
+    $('fullscreenBtn').textContent='⛶ Tela inteira';
    }
-   updateFullscreenButton();
    setTimeout(()=>map.invalidateSize(true),150);
   });
 
