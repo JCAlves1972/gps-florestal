@@ -2,6 +2,10 @@
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#173d2b"><meta name="description" content="GPS Florestal: mapas, inventário, medições e pontos de campo."><link rel="manifest" href="manifest.json"><title>GPS Florestal</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""><style>
 :root{--g:#173d2b;--g2:#24583d;--bg:#f2f5f1;--line:#d8e1d8;--txt:#17231b;--muted:#617064}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:16px system-ui,-apple-system,Segoe UI,sans-serif}header{background:var(--g);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:1000}header h1{margin:0;font-size:21px}header p{margin:3px 0 0;font-size:12px}main{max-width:950px;margin:auto;padding:12px;display:grid;gap:12px}.card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px;box-shadow:0 2px 8px #193b2410}h2{font-size:17px;margin:0 0 10px}h3{font-size:15px;margin:14px 0 7px}.muted,.small{color:var(--muted);font-size:12px}label{display:block;font-size:13px;font-weight:650;margin:8px 0}input,select,textarea{width:100%;border:1px solid #cbd7cb;border-radius:9px;padding:10px;font:inherit;background:#fff;color:var(--txt);margin-top:4px}button,.filebtn{border:0;border-radius:9px;padding:10px 12px;background:var(--g2);color:#fff;font-weight:650;font-size:14px;min-height:42px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}button.secondary,.filebtn.secondary{background:#e8eee8;color:var(--g)}button.danger{background:#9c3029}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.actions>*{flex:1}.grid2,.grid3,.grid4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.metric,.result{background:#f5f8f4;border-radius:9px;padding:9px}.metric span,.result span{display:block;color:var(--muted);font-size:12px}.metric strong,.result strong{font-size:15px;overflow-wrap:anywhere}.status{font-weight:650}#map{height:58vh;min-height:360px;border:1px solid var(--line);border-radius:9px;z-index:1}.layerbar{display:flex;gap:7px;margin:8px 0}
+
+#map{position:relative}
+#mapFullscreenBtn{position:absolute!important;top:10px!important;right:10px!important;z-index:1200!important;min-height:42px!important;padding:8px 11px!important;border:2px solid #b8c5b8!important;border-radius:8px!important;background:#fff!important;color:#173d2b!important;font-size:13px!important;font-weight:750!important;box-shadow:0 1px 5px #0003!important;display:block!important}
+#map.map-fullscreen #mapFullscreenBtn{top:12px!important;right:12px!important}
 #map.map-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;min-height:0!important;z-index:3000!important;border:0!important;border-radius:0!important;background:#f2f5f1}
 .leaflet-control-fullscreen a{width:auto!important;min-width:42px;padding:0 10px!important;font-size:13px!important;font-weight:700!important;color:#173d2b!important;background:#fff!important;text-decoration:none!important;white-space:nowrap}
 .layerbar button{flex:1}.layerbar .active{outline:3px solid #a9c7ae}.item{border-top:1px solid var(--line);padding:10px 0}.item:first-child{border-top:0}.hint{background:#eef6ee;border-radius:9px;padding:10px;font-size:13px}.hidden{display:none!important}.tag{display:inline-block;background:#e8eee8;color:var(--g);border-radius:20px;padding:3px 8px;font-size:11px;font-weight:700}footer{text-align:center;padding:8px 15px 20px;color:var(--muted);font-size:12px}@media(min-width:700px){main{padding:18px}.grid4{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -64,39 +68,37 @@ function initMap(){
   streetPrimary.addTo(map);
   pointLayer=L.layerGroup().addTo(map);
 
-  const FullscreenControl=L.Control.extend({
-   options:{position:'topright'},
-   onAdd:function(){
-    const container=L.DomUtil.create('div','leaflet-bar leaflet-control leaflet-control-fullscreen');
-    const link=L.DomUtil.create('a','',container);
-    link.href='#';link.title='Abrir mapa em tela inteira';link.setAttribute('role','button');link.textContent='Tela inteira';
-    L.DomEvent.disableClickPropagation(container);
-    L.DomEvent.on(link,'click',function(ev){
-     L.DomEvent.preventDefault(ev);
-     const mapEl=map.getContainer();
-     const active=mapEl.classList.contains('map-fullscreen');
-     if(!active){
-      mapEl.classList.add('map-fullscreen');
-      link.textContent='Sair da tela inteira';link.title='Sair da tela inteira';
-      if(mapEl.requestFullscreen){mapEl.requestFullscreen().catch(()=>{});}
-     }else{
-      mapEl.classList.remove('map-fullscreen');
-      link.textContent='Tela inteira';link.title='Abrir mapa em tela inteira';
-      if(document.fullscreenElement&&document.exitFullscreen){document.exitFullscreen().catch(()=>{});}
-     }
-     setTimeout(()=>map.invalidateSize(true),250);
-    });
-    document.addEventListener('fullscreenchange',()=>{
-     if(!document.fullscreenElement && mapEl.classList.contains('map-fullscreen')){
-      mapEl.classList.remove('map-fullscreen');
-      link.textContent='Tela inteira';link.title='Abrir mapa em tela inteira';
-      setTimeout(()=>map.invalidateSize(true),150);
-     }
-    });
-    return container;
+  const mapEl=map.getContainer();
+  const fullscreenBtn=document.createElement('button');
+  fullscreenBtn.type='button';
+  fullscreenBtn.id='mapFullscreenBtn';
+  fullscreenBtn.textContent='⛶ Tela inteira';
+  fullscreenBtn.setAttribute('aria-label','Abrir mapa em tela inteira');
+  mapEl.appendChild(fullscreenBtn);
+  const updateFullscreenButton=()=>{
+   const active=mapEl.classList.contains('map-fullscreen');
+   fullscreenBtn.textContent=active?'✕ Sair da tela inteira':'⛶ Tela inteira';
+   fullscreenBtn.setAttribute('aria-label',active?'Sair da tela inteira':'Abrir mapa em tela inteira');
+  };
+  fullscreenBtn.addEventListener('click',async()=>{
+   const active=mapEl.classList.contains('map-fullscreen');
+   if(!active){
+    mapEl.classList.add('map-fullscreen');
+    try{if(mapEl.requestFullscreen) await mapEl.requestFullscreen();}catch(e){}
+   }else{
+    mapEl.classList.remove('map-fullscreen');
+    try{if(document.fullscreenElement&&document.exitFullscreen) await document.exitFullscreen();}catch(e){}
    }
+   updateFullscreenButton();
+   setTimeout(()=>map.invalidateSize(true),250);
   });
-  map.addControl(new FullscreenControl());
+  document.addEventListener('fullscreenchange',()=>{
+   if(!document.fullscreenElement && mapEl.classList.contains('map-fullscreen')){
+    mapEl.classList.remove('map-fullscreen');
+   }
+   updateFullscreenButton();
+   setTimeout(()=>map.invalidateSize(true),150);
+  });
 
   $('streetBtn').onclick=()=>{
    if(map.hasLayer(satLayer))map.removeLayer(satLayer);
