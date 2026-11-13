@@ -209,7 +209,23 @@ function updatePosition(pos){
  $('lat').textContent=fmt(currentPosition.lat,6);$('lon').textContent=fmt(currentPosition.lon,6);$('accuracy').textContent=Math.round(currentPosition.accuracy)+' m';$('updated').textContent=new Date().toLocaleTimeString('pt-BR');$('gpsStatus').textContent='GPS ativo • posição recebida';
  if(map){const ll=[currentPosition.lat,currentPosition.lon];if(!gpsMarker)gpsMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:#1685ff;border:3px solid white;outline:2px solid #1685ff"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map).bindPopup('Minha posição GPS');else gpsMarker.setLatLng(ll);if(!accuracyCircle)accuracyCircle=L.circle(ll,{radius:currentPosition.accuracy,color:'#087cff',weight:1,fillOpacity:.08}).addTo(map);else accuracyCircle.setLatLng(ll).setRadius(currentPosition.accuracy);}
 }
-$('startGps').onclick=()=>{if(!navigator.geolocation)return alert('GPS indisponível neste navegador.');if(location.protocol!=='https:'&&location.hostname!=='localhost')return alert('Abra pelo endereço HTTPS.');if(watchId!==null)navigator.geolocation.clearWatch(watchId);$('gpsStatus').textContent='Procurando posição GPS…';watchId=navigator.geolocation.watchPosition(updatePosition,e=>{$('gpsStatus').textContent='Erro no GPS: '+e.message;},{enableHighAccuracy:true,maximumAge:2000,timeout:20000});};
+function startGpsTracking(showPermissionHint=true){
+ if(!navigator.geolocation){$('gpsStatus').textContent='GPS indisponível neste navegador.';return false;}
+ if(location.protocol!=='https:'&&location.hostname!=='localhost'){$('gpsStatus').textContent='Abra pelo endereço HTTPS para usar o GPS.';return false;}
+ if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+ $('gpsStatus').textContent=showPermissionHint?'Solicitando acesso à localização…':'Procurando posição GPS…';
+ watchId=navigator.geolocation.watchPosition(
+  updatePosition,
+  e=>{
+   watchId=null;
+   const msg=e.code===1?'Permissão de localização negada. Autorize o GPS nas configurações do navegador.':e.code===2?'Posição indisponível. Confira se a localização do celular está ligada.':'Tempo esgotado aguardando o GPS. Tente novamente.';
+   $('gpsStatus').textContent='GPS: '+msg;
+  },
+  {enableHighAccuracy:true,maximumAge:2000,timeout:30000}
+ );
+ return true;
+}
+$('startGps').onclick=()=>startGpsTracking(true);
 $('stopGps').onclick=()=>{if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('gpsStatus').textContent='GPS pausado';};
 $('centerGps').onclick=()=>{if(currentPosition&&map)map.setView([currentPosition.lat,currentPosition.lon],17);else alert('Ative o GPS e aguarde a posição.');};
 function geoPdf(bytes){
@@ -251,6 +267,9 @@ $('removePdf').onclick=async()=>{
  $('pdfName').textContent='Nenhum PDF selecionado.';$('overlayStatus').textContent='Sobreposição removida desta fazenda por sua solicitação.';
 };
 initFarms();refreshFarmUI();initMap();
+// Inicia o acompanhamento automaticamente ao abrir o aplicativo.
+// Se o navegador precisar de autorização, o Android exibirá a solicitação.
+window.addEventListener('load',()=>{setTimeout(()=>startGpsTracking(true),500);},{once:true});
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
 </script>
 </body>
