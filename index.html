@@ -272,5 +272,6 @@ initFarms();refreshFarmUI();initMap();
 window.addEventListener('load',()=>{setTimeout(()=>startGpsTracking(true),500);},{once:true});
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
 </script>
+<script src="./navegacao-florestal.js"></script>
 </body>
 </html>
