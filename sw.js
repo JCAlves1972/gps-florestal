@@ -1,5 +1,5 @@
 'use strict';
-const CACHE_NAME='gps-florestal-v7-destination-fix';
+const CACHE_NAME = 'gps-florestal-v8-portugues';
 const BASE=self.registration.scope;
 const FILES=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./navegacao-florestal.js'];
 self.addEventListener('install',e=>e.waitUntil((async()=>{const c=await caches.open(CACHE_NAME);await Promise.all(FILES.map(async f=>{try{const u=new URL(f,BASE),r=await fetch(u,{cache:'reload'});if(r.ok)await c.put(u,r);}catch(_){}}));await self.skipWaiting();})()));
