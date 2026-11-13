@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'gps-florestal-v2';
+const CACHE_NAME = 'gps-florestal-v3';
 const CORE_FILES = [
   './',
   './index.html',
