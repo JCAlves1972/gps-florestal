@@ -1,5 +1,5 @@
 'use strict';
-const CACHE_NAME = 'gps-florestal-v10-libraries';
+const CACHE_NAME = 'gps-florestal-v11-menu-map-first';
 const TILE_CACHE = 'gps-florestal-tiles-v1';
 const BASE = self.registration.scope;
 const FILES = [
