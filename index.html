@@ -7,7 +7,56 @@
 <meta name="description" content="GPS Florestal: mapas, inventário, medições e pontos de campo.">
 <link rel="manifest" href="manifest.json">
 <title>GPS Florestal</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script>
+/* Carregamento resiliente das bibliotecas cartográficas, com fontes alternativas. */
+window.__GPSF_PDF_WORKER_SRC = '';
+window.__gpsfLibsReady = (async function(){
+  const cssSources = [
+    'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+  ];
+  const leafletSources = [
+    'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js',
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+  ];
+  const pdfSources = [
+    {src:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',worker:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'},
+    {src:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',worker:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'},
+    {src:'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',worker:'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js'}
+  ];
+  function loadCss(list){
+    return new Promise(resolve=>{
+      let i=0;
+      function next(){
+        if(i>=list.length){resolve(false);return;}
+        const link=document.createElement('link');link.rel='stylesheet';link.href=list[i++];
+        link.onload=()=>resolve(true);link.onerror=()=>{link.remove();next();};document.head.appendChild(link);
+      }
+      next();
+    });
+  }
+  function loadScript(list, getUrl){
+    return new Promise(resolve=>{
+      let i=0;
+      function next(){
+        if(i>=list.length){resolve('');return;}
+        const item=list[i++],src=getUrl?getUrl(item):item;
+        const script=document.createElement('script');script.src=src;script.async=true;
+        script.onload=()=>resolve(item);script.onerror=()=>{script.remove();next();};document.head.appendChild(script);
+      }
+      next();
+    });
+  }
+  const cssPromise=loadCss(cssSources);
+  const leafletPromise=loadScript(leafletSources);
+  const pdfPromise=loadScript(pdfSources,item=>item.src);
+  const [,leafletLoaded,pdfLoaded]=await Promise.all([cssPromise,leafletPromise,pdfPromise]);
+  if(pdfLoaded) window.__GPSF_PDF_WORKER_SRC=pdfLoaded.worker;
+  return {leaflet:!!leafletLoaded,pdf:!!pdfLoaded,css:await cssPromise};
+})();
+</script>
 <style>
 :root{--g:#173d2b;--g2:#24583d;--bg:#f2f5f1;--line:#d8e1d8;--txt:#17231b;--muted:#617064}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:16px system-ui,-apple-system,Segoe UI,sans-serif}
@@ -42,8 +91,7 @@ footer{text-align:center;padding:8px 15px 20px;color:var(--muted);font-size:12px
 <section class="card"><h2>Backup e restauração</h2><p class="small">O backup inclui fazendas, inventários, medições e pontos. Guarde uma cópia fora do aparelho.</p><div class="actions"><button id="exportData">Exportar backup completo</button><label class="filebtn secondary">Restaurar backup<input id="importData" type="file" accept=".json,application/json"></label></div><p class="small">Os dados ficam neste navegador/aparelho. A troca de aparelho exige exportar e restaurar o backup.</p></section>
 <section class="card"><h2>Uso offline</h2><p class="small">Dados, inventários, medições e PDFs ficam no aparelho. Leaflet, PDF.js e mapas-base externos podem exigir internet para carregar pela primeira vez. O cache dos mapas depende da configuração do serviço de mapas.</p></section>
 </main><footer>GPS Florestal • versão multifazendas</footer>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
@@ -173,7 +221,7 @@ $('importData').onchange=async e=>{
  }catch(err){alert('Não foi possível restaurar: '+err.message);}e.target.value='';
 };
 function initMap(){
- if(!window.L){$('mapStatus').textContent='A biblioteca do mapa não carregou. Verifique a internet e recarregue a página.';return;}
+ if(!window.L){$('mapStatus').textContent='Não foi possível carregar a biblioteca do mapa por nenhuma das fontes disponíveis. Verifique a conexão e tente novamente.';return;}
  try{
   map=L.map('map',{zoomControl:true,preferCanvas:true}).setView([-22.3,-49],10);
   const streetPrimary=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap',crossOrigin:true});
@@ -239,7 +287,7 @@ $('mapFile').onchange=async e=>{
  const file=e.target.files[0];if(!file)return;if(pdfObjectUrl)URL.revokeObjectURL(pdfObjectUrl);pdfObjectUrl=URL.createObjectURL(file);$('pdfName').textContent=file.name;$('overlayStatus').textContent='Lendo PDF e procurando coordenadas…';
  try{
   if(!window.pdfjsLib)throw Error('A biblioteca de leitura de PDF ainda não está disponível neste aparelho. Conecte à internet, abra o aplicativo uma vez e tente novamente.');
-  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc=window.__GPSF_PDF_WORKER_SRC||'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const bytes=await file.arrayBuffer(),geo=geoPdf(bytes),pdf=await pdfjsLib.getDocument({data:bytes}).promise,page=await pdf.getPage(1),vp=page.getViewport({scale:2}),canvas=document.createElement('canvas');
   canvas.width=vp.width;canvas.height=vp.height;await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;pdfCanvas=canvas;
   if(geo&&geo.bbox){const [x0,y0,x1,y1]=geo.bbox,p1=vp.convertToViewportPoint(x0,y1),p2=vp.convertToViewportPoint(x1,y0),left=Math.max(0,Math.min(p1[0],p2[0])),top=Math.max(0,Math.min(p1[1],p2[1])),right=Math.min(canvas.width,Math.max(p1[0],p2[0])),bottom=Math.min(canvas.height,Math.max(p1[1],p2[1])),cw=right-left,ch=bottom-top;if(cw>0&&ch>0){const cropped=document.createElement('canvas');cropped.width=Math.round(cw);cropped.height=Math.round(ch);cropped.getContext('2d').drawImage(canvas,left,top,cw,ch,0,0,cropped.width,cropped.height);pdfCanvas=cropped;}}
@@ -266,7 +314,7 @@ $('removePdf').onclick=async()=>{
  try{await dbDelete('farm-'+activeId);}catch(e){}
  $('pdfName').textContent='Nenhum PDF selecionado.';$('overlayStatus').textContent='Sobreposição removida desta fazenda por sua solicitação.';
 };
-initFarms();refreshFarmUI();initMap();
+initFarms();refreshFarmUI();window.__gpsfLibsReady.then(()=>initMap()).catch(()=>initMap());
 // Inicia o acompanhamento automaticamente ao abrir o aplicativo.
 // Se o navegador precisar de autorização, o Android exibirá a solicitação.
 window.addEventListener('load',()=>{setTimeout(()=>startGpsTracking(true),500);},{once:true});
